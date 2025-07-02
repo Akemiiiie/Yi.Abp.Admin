@@ -1,11 +1,14 @@
 ﻿using System.Collections.Generic;
 using System.Net;
 using Microsoft.Extensions.Options;
-using OpenAI;
-using OpenAI.Managers;
-using OpenAI.ObjectModels;
-using OpenAI.ObjectModels.RequestModels;
-using OpenAI.ObjectModels.ResponseModels;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
+// using OpenAI;
+// using OpenAI.Managers;
+// using OpenAI.ObjectModels;
+// using OpenAI.ObjectModels.RequestModels;
+// using OpenAI.ObjectModels.ResponseModels;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Services;
 using Yi.Framework.ChatHub.Domain.Shared.Dtos;
@@ -14,71 +17,50 @@ namespace Yi.Framework.ChatHub.Domain.Managers
 {
     public class AiManager : ISingletonDependency
     {
-        public AiManager(IOptions<AiOptions> options)
+        private readonly Kernel _kernel;
+        public AiManager(Kernel kernel)
         {
-            this.OpenAIService = new OpenAIService(new OpenAiOptions()
-            {
-                ApiKey = options.Value.ApiKey,
-                BaseDomain = options.Value.BaseDomain
-            });
+            _kernel = kernel;
         }
-        private OpenAIService OpenAIService { get; }
 
-        public async IAsyncEnumerable<string> ChatAsStreamAsync(List<AiChatContextDto> aiChatContextDtos)
+        public async IAsyncEnumerable<string?> ChatAsStreamAsync(string model, List<AiChatContextDto> aiChatContextDtos)
         {
-            //var temp = "站长正在接入ChatGpt,敬请期待~";
-
-            //for (var i = 0; i < temp.Length; i++)
-            //{
-            //    await Task.Delay(200);
-            //    yield return temp[i].ToString();
-            //}
-
-
-
-
             if (aiChatContextDtos.Count == 0)
             {
                 yield return null;
             }
+            var openSettings = new OpenAIPromptExecutionSettings()
+            {
+                MaxTokens =1000
+            };
 
-            List<ChatMessage> messages = aiChatContextDtos.Select(x =>
-            {
-                if (x.AnswererType == AnswererTypeEnum.Ai)
-                {
-                    return ChatMessage.FromSystem(x.Message);
-                }
-                else
-                {
-                    return ChatMessage.FromUser(x.Message);
-                }
-            }).ToList();
-            var completionResult = OpenAIService.ChatCompletion.CreateCompletionAsStream(new ChatCompletionCreateRequest
-            {
-                Messages = messages,
-                Model = Models.Gpt_4o_mini
-            });
+            var chatCompletionService = this._kernel.GetRequiredService<IChatCompletionService>(model);
 
-            HttpStatusCode? error = null;
-            await foreach (var result in completionResult)
+            var  history   =new ChatHistory();
+            foreach (var aiChatContextDto in aiChatContextDtos)
             {
-                if (result.Successful)
+                if (aiChatContextDto.AnswererType==AnswererTypeEnum.Ai)
                 {
-                    yield return result.Choices.FirstOrDefault()?.Message.Content ?? string.Empty;
+                    history.AddSystemMessage(aiChatContextDto.Message);
                 }
-                else
+                else if(aiChatContextDto.AnswererType==AnswererTypeEnum.User)
                 {
-                    error = result.HttpStatusCode;
-                    break;
+                    history.AddUserMessage(aiChatContextDto.Message);
                 }
-           
             }
-            if (error == HttpStatusCode.PaymentRequired)
+            
+            var results = chatCompletionService.GetStreamingChatMessageContentsAsync(
+                chatHistory: history,
+                executionSettings: openSettings,
+                kernel: _kernel);
+            if (results is null)
             {
-                yield return "余额不足,请联系站长充值";
-             
+                yield  return null;
             }
-
+          await foreach (var result in results)
+          {
+              yield return result.Content;
+          }
         }
     }
 }

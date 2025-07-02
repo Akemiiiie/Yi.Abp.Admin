@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from "vue";
 
-const props = defineProps(["items", "header", "text", "hideDivider", "height"]);
+const props = defineProps(["items", "header", "text", "hideDivider", "height","isPadding"]);
 const emit = defineEmits(['onClickText'])
 const height = ref(props.height + "px");
 
@@ -11,7 +11,7 @@ const onClickText=()=>{
 </script>
 
 <template>
-  <el-card class="box-card" shadow="never">
+  <el-card class="box-card" shadow="never" :body-style="{padding: props.isPadding===false?'0px 0px':'20px 20px'}">
     <template #header>
       <div class="card-header">
         <span>{{ props.header }}</span>
@@ -37,7 +37,8 @@ const onClickText=()=>{
 .el-divider {
   margin: 0.2rem 0;
 }
-.VisitsLineChart /deep/ .el-card__body{
+
+::v-deep(.VisitsLineChart  .el-card__body){
   padding: 0 20px;
 }
  .box-card-info {
@@ -50,7 +51,6 @@ const onClickText=()=>{
   justify-content: space-between;
   align-items: center;
 }
-
 .text {
   font-size: 14px;
 }

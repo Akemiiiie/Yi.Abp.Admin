@@ -9,6 +9,10 @@ using Hangfire.Redis.StackExchange;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using StackExchange.Redis;
@@ -19,9 +23,11 @@ using Volo.Abp.AspNetCore.MultiTenancy;
 using Volo.Abp.AspNetCore.Mvc;
 using Volo.Abp.AspNetCore.Mvc.AntiForgery;
 using Volo.Abp.AspNetCore.Serilog;
+using Volo.Abp.AspNetCore.VirtualFileSystem;
 using Volo.Abp.Auditing;
 using Volo.Abp.Autofac;
 using Volo.Abp.BackgroundJobs.Hangfire;
+using Volo.Abp.BackgroundWorkers;
 using Volo.Abp.Caching;
 using Volo.Abp.MultiTenancy;
 using Volo.Abp.Swashbuckle;
@@ -39,10 +45,12 @@ using Yi.Framework.Bbs.Application.Extensions;
 using Yi.Framework.ChatHub.Application;
 using Yi.Framework.CodeGen.Application;
 using Yi.Framework.Core.Json;
+using Yi.Framework.DigitalCollectibles.Application;
 using Yi.Framework.Rbac.Application;
 using Yi.Framework.Rbac.Domain.Authorization;
 using Yi.Framework.Rbac.Domain.Shared.Consts;
 using Yi.Framework.Rbac.Domain.Shared.Options;
+using Yi.Framework.Stock.Application;
 using Yi.Framework.TenantManagement.Application;
 
 namespace Yi.Abp.Web
@@ -52,15 +60,16 @@ namespace Yi.Abp.Web
         typeof(YiAbpApplicationModule),
         typeof(AbpAspNetCoreMultiTenancyModule),
         typeof(AbpAspNetCoreMvcModule),
-        typeof(AbpAutofacModule),
+
         typeof(AbpSwashbuckleModule),
         typeof(AbpAspNetCoreSerilogModule),
         typeof(AbpAuditingModule),
-        typeof(YiFrameworkBackgroundWorkersHangfireModule),
-        typeof(AbpBackgroundJobsHangfireModule),
         typeof(AbpAspNetCoreAuthenticationJwtBearerModule),
         typeof(YiFrameworkAspNetCoreModule),
-        typeof(YiFrameworkAspNetCoreAuthenticationOAuthModule)
+        typeof(YiFrameworkAspNetCoreAuthenticationOAuthModule),
+        
+        typeof(YiFrameworkBackgroundWorkersHangfireModule),
+        typeof(AbpAutofacModule)
     )]
     public class YiAbpWebModule : AbpModule
     {
@@ -79,12 +88,14 @@ namespace Yi.Abp.Web
                     options => options.RemoteServiceName = "bbs");
                 options.ConventionalControllers.Create(typeof(YiFrameworkChatHubApplicationModule).Assembly,
                     options => options.RemoteServiceName = "chat-hub");
-                options.ConventionalControllers.Create(
-                    typeof(YiFrameworkTenantManagementApplicationModule).Assembly,
+                options.ConventionalControllers.Create(typeof(YiFrameworkTenantManagementApplicationModule).Assembly,
                     options => options.RemoteServiceName = "tenant-management");
                 options.ConventionalControllers.Create(typeof(YiFrameworkCodeGenApplicationModule).Assembly,
                     options => options.RemoteServiceName = "code-gen");
-
+                options.ConventionalControllers.Create(typeof(YiFrameworkDigitalCollectiblesApplicationModule).Assembly,
+                    options => options.RemoteServiceName = "digital-collectibles");
+                options.ConventionalControllers.Create(typeof(YiFrameworkStockApplicationModule).Assembly,
+                    options => options.RemoteServiceName = "ai-stock");
                 //统一前缀
                 options.ConventionalControllers.ConventionalControllerSettings.ForEach(x => x.RootPath = "api/app");
             });
@@ -96,11 +107,20 @@ namespace Yi.Abp.Web
             var host = context.Services.GetHostingEnvironment();
             var service = context.Services;
 
+            //本地开发环境，禁用作业执行
+            if (host.IsDevelopment())
+            {
+                Configure<AbpBackgroundWorkerOptions> (options =>
+                {
+                    options.IsEnabled = false; 
+                });
+            }
+            
             //请求日志
             Configure<AbpAuditingOptions>(options =>
             {
                 //默认关闭，开启会有大量的审计日志
-                options.IsEnabled = true;
+                options.IsEnabled = false;
             });
             //忽略审计日志路径
             Configure<AbpAspNetCoreAuditingOptions>(options =>
@@ -115,7 +135,7 @@ namespace Yi.Abp.Web
 
             //配置错误处理显示详情
             Configure<AbpExceptionHandlingOptions>(options => { options.SendExceptionsDetailsToClients = true; });
-            
+
             //【NewtonsoftJson严重问题！！！！！逆天】设置api格式，留给后人铭记
             // service.AddControllers().AddNewtonsoftJson(options =>
             // {
@@ -182,15 +202,17 @@ namespace Yi.Abp.Web
 
             //配置Hangfire定时任务存储，开启redis后，优先使用redis
             var redisConfiguration = configuration["Redis:Configuration"];
-            var redisEnabled = configuration["Redis:IsEnabled"];
             context.Services.AddHangfire(config=>
             {
-                if (redisEnabled.IsNullOrEmpty() || bool.Parse(redisEnabled))
+                var redisEnabled=configuration.GetSection("Redis").GetValue<bool>("IsEnabled");
+                if (redisEnabled)
                 {
+                    var jobDb=configuration.GetSection("Redis").GetValue<int>("JobDb");
                     config.UseRedisStorage(
                         ConnectionMultiplexer.Connect(redisConfiguration),
                         new RedisStorageOptions()
                         {
+                            Db =jobDb,
                             InvisibilityTimeout = TimeSpan.FromHours(1), //JOB允许执行1小时
                             Prefix = "Yi:HangfireJob:"
                         }).WithJobExpirationTimeout(TimeSpan.FromHours(1));
@@ -353,10 +375,21 @@ namespace Yi.Abp.Web
             app.UseAccessLog();
 
             //请求处理
-            app.UseYiApiHandlinge();
+            app.UseApiInfoHandling();
 
             //静态资源
-            app.UseStaticFiles("/api/app/wwwroot");
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                RequestPath = "/api/app/wwwroot",
+                // 可以在这里添加或修改MIME类型映射  
+                ContentTypeProvider = new FileExtensionContentTypeProvider
+                {
+                    Mappings =
+                    {
+                        [".wxss"] = "text/css"
+                    }
+                }
+            });
             app.UseDefaultFiles();
             app.UseDirectoryBrowser("/api/app/wwwroot");
 

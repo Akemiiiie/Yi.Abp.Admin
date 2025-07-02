@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using SqlSugar;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
+using Volo.Abp.Users;
 using Yi.Framework.Bbs.Application.Contracts.Dtos.BbsUser;
 using Yi.Framework.Bbs.Application.Contracts.Dtos.Comment;
 using Yi.Framework.Bbs.Application.Contracts.IServices;
@@ -34,24 +35,20 @@ namespace Yi.Framework.Bbs.Application.Services.Forum
             _repository = CommentRepository;
             _bbsUserManager = bbsUserManager;
         }
-
         private ForumManager _forumManager { get; set; }
-
-
-
         private ISqlSugarRepository<DiscussAggregateRoot> _discussRepository { get; set; }
 
         private IDiscussService _discussService { get; set; }
+        
         /// <summary>
         /// 获取改主题下的评论,结构为二维列表，该查询无分页
-        /// Todo: 可放入领域层
         /// </summary>
         /// <param name="discussId"></param>
         /// <param name="input"></param>
         /// <returns></returns>
         public async Task<PagedResultDto<CommentGetListOutputDto>> GetDiscussIdAsync([FromRoute] Guid discussId, [FromQuery] CommentGetListInputVo input)
         {
-            await _discussService.VerifyDiscussPermissionAsync(discussId);
+            await _forumManager.VerifyDiscussPermissionAsync(discussId,CurrentUser.Id);
 
             var entities = await _repository._DbQueryable.WhereIF(!string.IsNullOrEmpty(input.Content), x => x.Content.Contains(input.Content))
               .Where(x => x.DiscussId == discussId)
@@ -64,15 +61,7 @@ namespace Yi.Framework.Bbs.Application.Services.Forum
             List<Guid> userIds = entities.Where(x => x.CreatorId != null).Select(x => x.CreatorId ?? Guid.Empty).ToList();
             var bbsUserInfoDic = (await _bbsUserManager.GetBbsUserInfoAsync(userIds)).ToDictionary(x => x.Id);
 
-
-
-
-
-            //------数据查询完成------
-
-
-
-
+            //------数据查询完成------,以下只是dto的简单组装
 
             //从根目录开始组装
             //结果初始值，第一层等于全部根节点
@@ -117,11 +106,7 @@ namespace Yi.Framework.Bbs.Application.Services.Forum
             rootOutoutDto?.ForEach(x =>
             {
                 x.Children = x.Children.OrderByDescending(x => x.CreationTime).ToList();
-
             });
-
-
-
             return new PagedResultDto<CommentGetListOutputDto>(entities.Count(), rootOutoutDto);
         }
 
@@ -140,7 +125,7 @@ namespace Yi.Framework.Bbs.Application.Services.Forum
             {
                 throw new UserFriendlyException("评论不能为空");
             }
-            
+            await _bbsUserManager.VerifyUserLimitAsync(CurrentUser.GetId());
             var discuess = await _discussRepository.GetFirstAsync(x => x.Id == input.DiscussId);
             if (discuess is null)
             {

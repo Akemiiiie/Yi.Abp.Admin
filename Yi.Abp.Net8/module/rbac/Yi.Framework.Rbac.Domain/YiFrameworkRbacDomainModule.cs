@@ -1,6 +1,11 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Medallion.Threading;
+using Medallion.Threading.Redis;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using StackExchange.Redis;
 using Volo.Abp.AspNetCore.SignalR;
 using Volo.Abp.Caching;
+using Volo.Abp.DistributedLocking;
 using Volo.Abp.Domain;
 using Volo.Abp.Imaging;
 using Volo.Abp.Modularity;
@@ -20,7 +25,8 @@ namespace Yi.Framework.Rbac.Domain
         typeof(AbpAspNetCoreSignalRModule),
         typeof(AbpDddDomainModule),
         typeof(AbpCachingModule),
-        typeof(AbpImagingImageSharpModule)
+        typeof(AbpImagingImageSharpModule),
+        typeof(AbpDistributedLockingModule)
         )]
     public class YiFrameworkRbacDomainModule : AbpModule
     {
@@ -36,6 +42,19 @@ namespace Yi.Framework.Rbac.Domain
 
             //配置阿里云短信
             Configure<AliyunOptions>(configuration.GetSection(nameof(AliyunOptions)));
+            
+            //分布式锁,需要redis
+            if (configuration.GetSection("Redis").GetValue<bool>("IsEnabled"))
+            {
+                context.Services.AddSingleton<IDistributedLockProvider>(sp =>
+                {
+                    var connection = ConnectionMultiplexer
+                        .Connect(configuration["Redis:Configuration"]);
+                    return new 
+                        RedisDistributedSynchronizationProvider(connection.GetDatabase());
+                });
+            }
+
         }
     }
 }

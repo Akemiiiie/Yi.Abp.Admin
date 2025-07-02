@@ -7,6 +7,12 @@
 [![fork](https://gitee.com/ccnetcore/yi/badge/fork.svg?theme=dark)](https://gitee.com/ccnetcore/Yi)
 [![license](https://img.shields.io/badge/license-MIT-yellow)](https://gitee.com/ccnetcore/Yi)
 
+本项目 CDN 加速及安全防护由 Tencent EdgeOne 赞助
+
+[亚洲最佳CDN、边缘和安全解决方案 - Tencent EdgeOne](https://edgeone.ai/zh?from=github)
+
+<img src="readme/edgeone.png"/>
+
 [English](README-en.md) | 简体中文
 ****
 ##  🍍  简介:
@@ -22,7 +28,7 @@ YiFramework是一个基于.Net8+Abp.vNext+SqlSugar的DDD领域驱动设计后端
 
 Yi框架-一套与SqlSugar一样爽的.Net8开源框架。
 与Sqlsugar理念一致，以用户体验出发。
-适合.Net8学习、Sqlsugar学习 、项目二次开发。
+全生态拥抱AI，接入AI，100%代码经过AI洗礼
 集大成者，终究轮子
 
 （更新频繁，可watching持续关注。）
@@ -40,6 +46,17 @@ Yi框架-一套与SqlSugar一样爽的.Net8开源框架。
 - Yi.Doc.Md: 开源文档教程
 - Yi.Pure.Vue3：Pure ts后台前端
 - Yi.RuoYi.Vue3：RuoYi js后台前端
+
+****
+## 🍉 docker 一键启动
+
+完整内容在：README-Docker.md
+
+后端：`docker run -d --name yi.admin -p 19001:19001 jiftcc/yi.admin:last`
+
+bbs前端：`docker run -d --name yi.bbs -p 18001:18001 -v /home/Yi/Yi.Bbs.Vue3/yi-bbs.conf:/etc/nginx/conf.d/yi-bbs.conf jiftcc/yi.bbs:last`
+
+> 另外我们提供docker的build操作，我们更希望你能通过此种方式二开构建属于自己的镜像
 
 ****
 
@@ -60,7 +77,10 @@ Pure后台演示地址：https://ccnetcore.com:1001  （用户cc、密码123456�
 - [x] 完全支持微服务架构
 
 ****
+
 ##  🍇  详细到爆炸的Yi框架教程导航：
+
+0. [社区导航大全](https://ccnetcore.com/article/aaa00329-7f35-d3fe-d258-3a0f8380b742/fb8c871b-41fc-21bc-474f-3a154498f42b)
 
 1. [框架快速开始教程](https://ccnetcore.com/article/aaa00329-7f35-d3fe-d258-3a0f8380b742)(已完成)
 2. [框架功能模块教程](https://ccnetcore.com/article/8c464ab3-8ba5-2761-a4b0-3a0f83a9f312)(已完成)
@@ -247,9 +267,9 @@ js Vue3
 
 作者QQ：`454313500`，2029年之前作者24小时在线，时刻保持活跃更新。
 
-QQ交流群：官方一群（已满）、官方二群（已满）、官方三群：`786308927`（已满）、官方四群:`498310311`（基本已满）、官方五群:`981136525`（新群）
+QQ交流群：官方一群（已满）、官方二群（已满）、官方三群：`786308927`（已满）、官方四群:`498310311`（已满）、官方五群:`981136525`
 
-微信交流群：官方微信一群（已满）、官方微信二群
+微信交流群：官方微信一群（已满）、官方微信二群(已满)、官方微信三群
 
 微信交流群：加作者微信 chengzilaoge520 （橙子老哥520），备注拉群
 

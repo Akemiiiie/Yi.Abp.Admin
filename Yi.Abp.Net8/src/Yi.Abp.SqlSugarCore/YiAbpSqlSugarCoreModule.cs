@@ -6,29 +6,31 @@ using Yi.Framework.AuditLogging.SqlSugarCore;
 using Yi.Framework.Bbs.SqlSugarCore;
 using Yi.Framework.ChatHub.SqlSugarCore;
 using Yi.Framework.CodeGen.SqlSugarCore;
+using Yi.Framework.DigitalCollectibles.SqlsugarCore;
 using Yi.Framework.Mapster;
 using Yi.Framework.Rbac.SqlSugarCore;
 using Yi.Framework.SettingManagement.SqlSugarCore;
 using Yi.Framework.SqlSugarCore;
 using Yi.Framework.SqlSugarCore.Abstractions;
+using Yi.Framework.Stock.SqlsugarCore;
 using Yi.Framework.TenantManagement.SqlSugarCore;
 
 namespace Yi.Abp.SqlsugarCore
 {
     [DependsOn(
         typeof(YiAbpDomainModule),
-
         typeof(YiFrameworkRbacSqlSugarCoreModule),
+        typeof(YiFrameworkDigitalCollectiblesSqlSugarCoreModule),
         typeof(YiFrameworkBbsSqlSugarCoreModule),
         typeof(YiFrameworkCodeGenSqlSugarCoreModule),
-         typeof(YiFrameworkChatHubSqlSugarCoreModule),
-
+        typeof(YiFrameworkChatHubSqlSugarCoreModule),
+        typeof(YiFrameworkStockSqlSugarCoreModule),
         typeof(YiFrameworkSettingManagementSqlSugarCoreModule),
         typeof(YiFrameworkAuditLoggingSqlSugarCoreModule),
         typeof(YiFrameworkTenantManagementSqlSugarCoreModule),
         typeof(YiFrameworkMapsterModule),
         typeof(YiFrameworkSqlSugarCoreModule)
-        )]
+    )]
     public class YiAbpSqlSugarCoreModule : AbpModule
     {
         public override void ConfigureServices(ServiceConfigurationContext context)
