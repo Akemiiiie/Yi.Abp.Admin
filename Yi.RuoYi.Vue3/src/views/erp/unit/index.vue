@@ -1,5 +1,4 @@
 <template>
-
     <div class="app-container">
         <el-form
           :model="queryParams"
@@ -60,7 +59,6 @@
             <el-button icon="Refresh" @click="resetQuery">重置</el-button>
           </el-form-item>
         </el-form>
-    
         <el-row :gutter="10" class="mb8">
           <el-col :span="1.5">
             <el-button
@@ -109,7 +107,6 @@
             @queryTable="getList"
           ></right-toolbar>
         </el-row>
-    
         <el-table
           v-loading="loading"
           :data="dataList"
@@ -171,7 +168,6 @@
             </template>
           </el-table-column>
         </el-table>
-    
         <pagination
           v-show="total > 0"
           :total="Number(total)"
@@ -179,7 +175,6 @@
           v-model:limit="queryParams.maxResultCount"
           @pagination="getList"
         />
-    
         <!-- ---------------------这里是新增和更新的对话框--------------------- -->
         <el-dialog :title="title" v-model="open" width="600px" append-to-body>
           <el-form ref="dataRef" :model="form" :rules="rules" label-width="100px">
@@ -216,17 +211,10 @@
             </div>
           </template>
         </el-dialog>
-      </div>
+    </div>
+</template>
     
-    
-    
-    
-    
-    
-    
-    </template>
-    
-    <script setup>
+<script setup>
     import {
       listData,
       getData,
@@ -236,7 +224,6 @@
     } from "@/api/erp/unitApi";
     import { ref } from "@vue/reactivity";
 
-    
     const { proxy } = getCurrentInstance();
     const { sys_normal_disable } = proxy.useDict("sys_normal_disable");
     
@@ -263,7 +250,6 @@
         name: [{ required: true, message: "单位名称不能为空", trigger: "blur" }],
       },
     });
-    
     
     const { queryParams, form, rules } = toRefs(data);
     
@@ -360,4 +346,4 @@
     function handleExport() {}
     
     getList();
-    </script>
+</script>
